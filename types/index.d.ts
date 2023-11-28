@@ -22,7 +22,7 @@ interface StatusBar {
     * @param isOverlay - On iOS 7, set to false to make the statusbar appear like iOS 6.
     *                    Set the style and background color to suit using the other functions.
     */
-    overlaysWebView(isOverlay: boolean): void;
+    overlaysWebView(isOverlay: boolean, successHandler: (response: any) => any): void;
 
     /**
     * Use the default statusbar (dark text, for light backgrounds).

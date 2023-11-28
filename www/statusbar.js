@@ -43,8 +43,8 @@ var namedColors = {
 var StatusBar = {
     isVisible: true,
 
-    overlaysWebView: function (doOverlay) {
-        exec(null, null, 'StatusBar', 'overlaysWebView', [doOverlay]);
+    overlaysWebView: function (doOverlay, successCallback) {
+      exec(successCallback, null, 'StatusBar', 'overlaysWebView', [doOverlay]);
     },
 
     styleDefault: function () {
