@@ -202,17 +202,15 @@ public class StatusBar extends CordovaPlugin {
     }
 
     if (Build.VERSION.SDK_INT >= 33 && callbackContext != null) {
+      /*
+       Set padding bottom to prevent navigation bar overlays content on Android 13
+       Important: apply padding on root view (window.getDecorView().findViewById(android.R.id.content)) to prevent
+       navigation bar color error
+      */
       WindowCompat.setDecorFitsSystemWindows(window, false);
-      ViewCompat.setOnApplyWindowInsetsListener(window.getDecorView(), (v, insets) -> {
-        try {
-          // calculate the percentage of the screen occupied by the navigation bar
-          final int webViewHeight = webView.getView().getHeight();
-          final int navigationBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
-          final float result = (float) navigationBarHeight/webViewHeight;
-          callbackContext.success("" + result);
-        } catch (Exception e) {
-          callbackContext.success("0");
-        }
+      ViewCompat.setOnApplyWindowInsetsListener(window.getDecorView().findViewById(android.R.id.content), (v, insets) -> {
+        final int navigationBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+        v.setPadding(0, 0, 0, navigationBarHeight);
         return insets;
       });
     }
