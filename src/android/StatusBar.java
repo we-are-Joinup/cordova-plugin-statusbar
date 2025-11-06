@@ -23,6 +23,7 @@ import android.graphics.Color;
 import android.os.Build;
 import android.view.View;
 import android.view.Window;
+import android.view.WindowInsets;
 import android.view.WindowManager;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -54,6 +55,8 @@ public class StatusBar extends CordovaPlugin {
 
     private AppCompatActivity activity;
     private Window window;
+    private String previousColor = "";
+    private Boolean forceAndroid15DefaultStyle = false;
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -74,6 +77,9 @@ public class StatusBar extends CordovaPlugin {
             // Clear flag FLAG_FORCE_NOT_FULLSCREEN which is set initially
             // by the Cordova.
             window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
+
+            // To force android >= 15 default style we have to prevent setStatusBarBackgroundColor or setStatusBarTransparent
+            forceAndroid15DefaultStyle = Boolean.parseBoolean(preferences.getString("StatusBarAndroid15ForceDefault", "false"));
 
             // Read 'StatusBarOverlaysWebView' from config.xml, default is true.
             setStatusBarTransparent(preferences.getBoolean("StatusBarOverlaysWebView", true));
@@ -168,7 +174,7 @@ public class StatusBar extends CordovaPlugin {
     }
 
     private void setStatusBarBackgroundColor(final String colorPref) {
-        if (colorPref.isEmpty()) return;
+        if (colorPref.isEmpty() || forceAndroid15DefaultStyle) return;
 
         int color;
         try {
@@ -178,36 +184,68 @@ public class StatusBar extends CordovaPlugin {
             return;
         }
 
+      if (Build.VERSION.SDK_INT >= 35) {
+        /*
+        In android >= 15 by default status and navigation bar are fully transparent. To colour them we have to set padding
+        top/bottom and colour remaining space
+        */
+        View decorView = window.getDecorView();
+        decorView.setOnApplyWindowInsetsListener((view, insets) -> {
+          int statusHeight = insets.getInsets(WindowInsets.Type.systemBars()).top;
+          int navHeight = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
+          view.setPadding(0, statusHeight, 0, navHeight);
+          view.setBackgroundColor(Color.parseColor(colorPref));
+          return insets;
+        });
+        decorView.requestApplyInsets();
+        this.previousColor = colorPref;
+      } else {
         window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS); // SDK 19-30
         window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS); // SDK 21
         window.setStatusBarColor(color);
+      }
     }
 
     private void setStatusBarTransparent(final boolean isTransparent) {
         final Window window = cordova.getActivity().getWindow();
-        int visibility = isTransparent
+        View decorView = window.getDecorView();
+        if (Build.VERSION.SDK_INT >= 35 && !forceAndroid15DefaultStyle) {
+            if (isTransparent) {
+              decorView.setBackground(null);
+              decorView.setOnApplyWindowInsetsListener((view, insets) -> {
+                view.setPadding(0, 0, 0, 0);
+                return insets;
+              });
+              decorView.requestApplyInsets();
+            } else {
+              // restore originalColor
+              setStatusBarBackgroundColor(this.previousColor);
+            }
+        } else {
+          int visibility = isTransparent
             ? View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
             : View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_VISIBLE;
 
-        window.getDecorView().setSystemUiVisibility(visibility);
+        decorView.setSystemUiVisibility(visibility);
 
         if (isTransparent) {
             window.setStatusBarColor(Color.TRANSPARENT);
         }
+      }
     }
 
     private void setStatusBarStyle(final String style) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !style.isEmpty()) {
-            View decorView = window.getDecorView();
-            WindowInsetsControllerCompat windowInsetsControllerCompat = WindowCompat.getInsetsController(window, decorView);
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !style.isEmpty()) {
+        View decorView = window.getDecorView();
+        WindowInsetsControllerCompat windowInsetsControllerCompat = WindowCompat.getInsetsController(window, decorView);
 
-            if (style.equals(STYLE_DEFAULT)) {
-                windowInsetsControllerCompat.setAppearanceLightStatusBars(true);
-            } else if (style.equals(STYLE_LIGHT_CONTENT)) {
-                windowInsetsControllerCompat.setAppearanceLightStatusBars(false);
-            } else {
-                LOG.e(TAG, "Invalid style, must be either 'default' or 'lightcontent'");
-            }
+        if (style.equals(STYLE_DEFAULT)) {
+          windowInsetsControllerCompat.setAppearanceLightStatusBars(true);
+        } else if (style.equals(STYLE_LIGHT_CONTENT)) {
+          windowInsetsControllerCompat.setAppearanceLightStatusBars(false);
+        } else {
+          LOG.e(TAG, "Invalid style, must be either 'default' or 'lightcontent'");
         }
+      }
     }
 }
