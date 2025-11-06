@@ -10,7 +10,7 @@
       "ios"
     ]
   },
-  "repository": "github:apache/cordova-plugin-statusbar",
+  "repository": "github:we-are-Joinup/cordova-plugin-statusbar",
   "bugs": "https://github.com/apache/cordova-plugin-statusbar/issues",
   "keywords": [
     "cordova",
