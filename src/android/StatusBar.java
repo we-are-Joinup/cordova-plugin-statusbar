@@ -56,7 +56,6 @@ public class StatusBar extends CordovaPlugin {
     private AppCompatActivity activity;
     private Window window;
     private String previousColor = "";
-    private Boolean forceAndroid15DefaultStyle = false;
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -77,9 +76,6 @@ public class StatusBar extends CordovaPlugin {
             // Clear flag FLAG_FORCE_NOT_FULLSCREEN which is set initially
             // by the Cordova.
             window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
-
-            // To force android >= 15 default style we have to prevent setStatusBarBackgroundColor or setStatusBarTransparent
-            forceAndroid15DefaultStyle = Boolean.parseBoolean(preferences.getString("StatusBarAndroid15ForceDefault", "false"));
 
             // Read 'StatusBarOverlaysWebView' from config.xml, default is true.
             setStatusBarTransparent(preferences.getBoolean("StatusBarOverlaysWebView", true));
@@ -173,8 +169,8 @@ public class StatusBar extends CordovaPlugin {
         }
     }
 
-    private void setStatusBarBackgroundColor(final String colorPref) {
-        if (colorPref.isEmpty() || forceAndroid15DefaultStyle) return;
+    private void setStatusBarBackgroundColor(final String colorPref, final String barType) {
+        if (colorPref.isEmpty()) return;
 
         int color;
         try {
@@ -191,8 +187,16 @@ public class StatusBar extends CordovaPlugin {
         */
         View decorView = window.getDecorView();
         decorView.setOnApplyWindowInsetsListener((view, insets) -> {
-          int statusHeight = insets.getInsets(WindowInsets.Type.systemBars()).top;
-          int navHeight = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
+          int statusHeight = 0;
+          int navHeight = 0;
+          if (barType.equals("statusBar")) {
+            statusHeight = insets.getInsets(WindowInsets.Type.systemBars()).top;
+          } else if (barType.equals("navBar")) {
+            navHeight = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
+          } else {
+            statusHeight = insets.getInsets(WindowInsets.Type.systemBars()).top;
+            navHeight = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
+          }
           view.setPadding(0, statusHeight, 0, navHeight);
           view.setBackgroundColor(Color.parseColor(colorPref));
           return insets;
@@ -209,7 +213,7 @@ public class StatusBar extends CordovaPlugin {
     private void setStatusBarTransparent(final boolean isTransparent) {
         final Window window = cordova.getActivity().getWindow();
         View decorView = window.getDecorView();
-        if (Build.VERSION.SDK_INT >= 35 && !forceAndroid15DefaultStyle) {
+        if (Build.VERSION.SDK_INT >= 35) {
             if (isTransparent) {
               decorView.setBackground(null);
               decorView.setOnApplyWindowInsetsListener((view, insets) -> {

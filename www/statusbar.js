@@ -57,11 +57,11 @@ var StatusBar = {
         exec(null, null, 'StatusBar', 'styleLightContent', []);
     },
 
-    backgroundColorByName: function (colorname) {
-        return StatusBar.backgroundColorByHexString(namedColors[colorname]);
+    backgroundColorByName: function (colorname, barType) {
+        return StatusBar.backgroundColorByHexString(namedColors[colorname], barType);
     },
 
-    backgroundColorByHexString: function (hexString) {
+    backgroundColorByHexString: function (hexString, barType) {
         if (hexString.charAt(0) !== '#') {
             hexString = '#' + hexString;
         }
@@ -71,7 +71,7 @@ var StatusBar = {
             hexString = '#' + split[1] + split[1] + split[2] + split[2] + split[3] + split[3];
         }
 
-        exec(null, null, 'StatusBar', 'backgroundColorByHexString', [hexString]);
+        exec(null, null, 'StatusBar', 'backgroundColorByHexString', [hexString, barType]);
     },
 
     hide: function () {
