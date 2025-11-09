@@ -56,6 +56,7 @@ public class StatusBar extends CordovaPlugin {
     private AppCompatActivity activity;
     private Window window;
     private String previousColor = "";
+    private Boolean forceAndroid15DefaultStyle = false;
 
     /**
      * Sets the context of the Command. This can then be used to do things like
@@ -77,11 +78,15 @@ public class StatusBar extends CordovaPlugin {
             // by the Cordova.
             window.clearFlags(WindowManager.LayoutParams.FLAG_FORCE_NOT_FULLSCREEN);
 
-            // Read 'StatusBarOverlaysWebView' from config.xml, default is true.
-            setStatusBarTransparent(preferences.getBoolean("StatusBarOverlaysWebView", true));
+            // To force android >= 15 default statusBar style we have to prevent call setStatusBarBackgroundColor or setStatusBarTransparent on init
+            forceAndroid15DefaultStyle = Boolean.parseBoolean(preferences.getString("StatusBarAndroid15ForceDefault", "false"));
+            if (!forceAndroid15DefaultStyle) {
+              // Read 'StatusBarOverlaysWebView' from config.xml, default is true.
+              setStatusBarTransparent(preferences.getBoolean("StatusBarOverlaysWebView", true));
 
-            // Read 'StatusBarBackgroundColor' from config.xml, default is #000000.
-            setStatusBarBackgroundColor(preferences.getString("StatusBarBackgroundColor", "#000000"));
+              // Read 'StatusBarBackgroundColor' from config.xml, default is #000000.
+              setStatusBarBackgroundColor(preferences.getString("StatusBarBackgroundColor", "#000000"), null);
+            }
 
             // Read 'StatusBarStyle' from config.xml, default is 'lightcontent'.
             setStatusBarStyle(
@@ -139,7 +144,7 @@ public class StatusBar extends CordovaPlugin {
             case ACTION_BACKGROUND_COLOR_BY_HEX_STRING:
                 activity.runOnUiThread(() -> {
                     try {
-                        setStatusBarBackgroundColor(args.getString(0));
+                        setStatusBarBackgroundColor(args.getString(0), args.getString(1));
                     } catch (JSONException ignore) {
                         LOG.e(TAG, "Invalid hexString argument, use f.i. '#777777'");
                     }
@@ -189,9 +194,9 @@ public class StatusBar extends CordovaPlugin {
         decorView.setOnApplyWindowInsetsListener((view, insets) -> {
           int statusHeight = 0;
           int navHeight = 0;
-          if (barType.equals("statusBar")) {
+          if (barType != null && barType.equals("statusBar")) {
             statusHeight = insets.getInsets(WindowInsets.Type.systemBars()).top;
-          } else if (barType.equals("navBar")) {
+          } else if (barType != null && barType.equals("navBar")) {
             navHeight = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
           } else {
             statusHeight = insets.getInsets(WindowInsets.Type.systemBars()).top;
@@ -223,7 +228,7 @@ public class StatusBar extends CordovaPlugin {
               decorView.requestApplyInsets();
             } else {
               // restore originalColor
-              setStatusBarBackgroundColor(this.previousColor);
+              setStatusBarBackgroundColor(this.previousColor, null);
             }
         } else {
           int visibility = isTransparent
